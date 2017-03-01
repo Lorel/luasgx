@@ -1,0 +1,21 @@
+/* EnclavedLua_Filter.edl - Top EDL file. */
+
+enclave {
+    /* 
+     *  [in]: copy the string buffer to App outside.
+     *  [string]: specifies 'str' is a NULL terminated buffer.
+     */
+    untrusted {
+        void ocall_print([in, string] const char *str);
+        void ocall_outresult( [in, size=len] const char *e, size_t len );
+    };
+
+    trusted {
+            public void ecall_luainit();
+            public void ecall_luaclose();
+    	    public size_t ecall_execfunc([in, size=csz] const char *code, size_t csz, [in, size=dsz]const char *data, size_t dsz, [out,size=len] char *buff, size_t len);
+            public void ecall_add_execution([in, string] const char *fname, [in, size=len] const char *e, size_t len);
+            public void ecall_execute([in, string] const char *fname, [in, size=len] const char *e, size_t len);
+    };
+};
+

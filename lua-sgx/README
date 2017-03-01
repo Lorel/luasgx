@@ -1,0 +1,4 @@
+
+Adapted Lua engine to SGX enclaves
+Syscalls are intercepted
+
