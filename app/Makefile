@@ -144,7 +144,7 @@ $(ENCLVNAME).so : $(TrustedObjects) $(LUADIR)/bin/libluasgx.a
 	@echo "LINK (Enclave)\t=>\t$@"
 
 $(LUADIR)/bin/libluasgx.a:
-	$(MAKE) -C $(LUADIR)
+	$(MAKE) -C $(LUADIR) -I/usr/include
 
 %_t.c : %.edl $(SGX_EDGER8R)
 	@cd $(dir $@) && $(SGX_EDGER8R) --trusted ../$< --search-path ../$(dir $<) --search-path $(SGX_SDK)/include
