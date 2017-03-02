@@ -1,4 +1,4 @@
-SGX_SDK=/opt/intel/sgxsdk
+SGX_SDK ?=/opt/intel/sgxsdk
 SGX_MODE ?= HW
 #SGX_MODE ?= SIMULATION_MODE
 SGX_PRERELEASE ?=1
@@ -48,7 +48,7 @@ Trusted_IncPaths := $(addprefix -I, $(LUADIR)/src $(SGX_SDK)/include/tlibc \
 Flags_Just_For_C := -Wno-implicit-function-declaration -std=c11
 Common_C_Cpp_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Trusted_IncPaths) -fno-builtin-printf -I.
 C_Flags := $(Flags_Just_For_C) $(Common_C_Cpp_Flags)
-Cpp_Flags := $(Common_C_Cpp_Flags) -I$(SGX_SDK)/include/stlport -std=c++11 -nostdinc++  
+Cpp_Flags := $(Common_C_Cpp_Flags) -I$(SGX_SDK)/include/stlport -std=c++11 -nostdinc++
 
 App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -lcryptopp -Wl,-E -ldl
 
@@ -95,7 +95,7 @@ TrustedSources = $(addprefix $(TRUSTED_DIR)/, $(ENCLVNAME)_t.c) ../luacsv/csv.c
 TrustedCppSrcs = $(addprefix $(TRUSTED_DIR)/, $(ENCLVNAME).cpp)
 TrustedObjects = $(TrustedSources:.c=.o) $(TrustedCppSrcs:.cpp=.o)
 
-.PHONY: all clean luasgx 
+.PHONY: all clean luasgx
 
 all: $(ENCLVNAME).signed.so luasgx
 
@@ -108,19 +108,19 @@ $(UNTRCJSON)/cjson.a:
 	@$(MAKE) -C $(UNTRCJSON)
 
 $(UNTRLUADIR)/src/liblua.a:
-	@$(MAKE) -C $(UNTRLUADIR)/src linux 
+	@$(MAKE) -C $(UNTRLUADIR)/src linux
 
 $(SGXCOMMONDIR)/%.o : $(SGXCOMMONDIR)/%.cpp
-	@$(CXX) $(App_Cpp_Flags) -c $< -o $@ 
-	@echo "CXX (App)\t<=\t$@" 
+	@$(CXX) $(App_Cpp_Flags) -c $< -o $@
+	@echo "CXX (App)\t<=\t$@"
 
 $(UNTRUSTED_DIR)/%.o : $(UNTRUSTED_DIR)/%.cpp
-	@$(CXX) $(App_Cpp_Flags) -c $< -o $@ 
-	@echo "CXX (App)\t<=\t$@" 
+	@$(CXX) $(App_Cpp_Flags) -c $< -o $@
+	@echo "CXX (App)\t<=\t$@"
 
 $(UNTRUSTED_DIR)/%_u.o : $(UNTRUSTED_DIR)/%_u.c
-	@$(CC) $(App_C_Flags) -c $< -o $@ 
-	@echo "CC (App)\t<=\t$@" 
+	@$(CC) $(App_C_Flags) -c $< -o $@
+	@echo "CC (App)\t<=\t$@"
 
 %_u.c : $(TRUSTED_DIR)/$(ENCLVNAME).edl $(SGX_EDGER8R)
 	@cd $(dir $@) && $(SGX_EDGER8R) --untrusted ../$< --search-path ../$(dir $<) --search-path $(SGX_SDK)/include
@@ -128,15 +128,15 @@ $(UNTRUSTED_DIR)/%_u.o : $(UNTRUSTED_DIR)/%_u.c
 
 ############## TRUSTED #########################################################
 %.o : %.s
-	@$(CC) $(C_Flags) -c $< -o $@ 
-	@echo "CC (Enclave)\t<=\t$@" 
+	@$(CC) $(C_Flags) -c $< -o $@
+	@echo "CC (Enclave)\t<=\t$@"
 
 %.o : %.c
-	@$(CC) $(C_Flags) -c $< -o $@ 
-	@echo "CC (Enclave)\t<=\t$@" 
+	@$(CC) $(C_Flags) -c $< -o $@
+	@echo "CC (Enclave)\t<=\t$@"
 
 %.o : %.cpp
-	@$(CXX) $(Cpp_Flags) -c $< -o $@ 
+	@$(CXX) $(Cpp_Flags) -c $< -o $@
 	@echo "CXX (Enclave)\t<=\t$@"
 
 $(ENCLVNAME).so : $(TrustedObjects) $(LUADIR)/bin/libluasgx.a
@@ -158,4 +158,3 @@ $(ENCLVNAME).signed.so : $(ENCLVNAME).so
 
 clean:
 	rm -f $(TrustedObjects) $(App_Objects) $(TRUSTED_DIR)/*_t.{c,h} $(UNTRUSTED_DIR)/*_u.{c,h} app $(ENCLVNAME)*so luasgx.a
-
