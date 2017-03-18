@@ -32,7 +32,7 @@ RUN echo $LUA53_REPO >> /etc/apt/sources.list && \
   apt-get install -y --allow-unauthenticated $BUILD_PACKAGES $UTIL_PACKAGES $DEPENDENCIES_PACKAGES
   #  && \
 
-ENV LINUX_SGX_COMMIT 525cefa817457d8a412d64677d347ebe64f0f77a
+
 RUN mkdir -p $SGX_BUILD_DIR && \
   cd $SGX_BUILD_DIR && \
   git init && \
@@ -48,9 +48,9 @@ RUN mkdir -p $SGX_BUILD_DIR && \
   make && \
   cd linux/installer/bin && \
   ./build-installpkg.sh psw && \
-  ./sgx_linux_x64_psw_1.8.100.37689.bin && \
+  ./sgx_linux_x64_psw_*.bin && \
   ./build-installpkg.sh sdk && \
-  INSTALL_PATH=$SGX_SDK_PARENT_DIR ./sgx_linux_x64_sdk_1.8.100.37689.bin && \
+  INSTALL_PATH=$SGX_SDK_PARENT_DIR ./sgx_linux_x64_sdk_*.bin && \
   rm -rfv $SGX_BUILD_DIR
   #  && \
 
