@@ -1,5 +1,4 @@
 #include <crypto.h>
-//#include <wolfssl/wolfcrypt/rsa.h>
 #include <fstream>
 #include <iostream>
 //------------------------------------------------------------------------------
@@ -170,6 +169,7 @@ std::string encrypt_rsa( const PubKey &pubkey, const std::string &plain ) {
             new CryptoPP::PK_EncryptorFilter(rng, e, new StringSink(cipher) ) );
     return cipher;
 }
+
 //------------------------------------------------------------------------------
 std::string decrypt_rsa( const PrvKey &prvkey, const std::string &cipher ) {
     std::string recovered;
@@ -180,5 +180,24 @@ std::string decrypt_rsa( const PrvKey &prvkey, const std::string &cipher ) {
          new CryptoPP::PK_DecryptorFilter(rng, d, new StringSink(recovered) ) );
     return recovered;
 }
+
+//------------------------------------------------------------------------------
+std::string sha256( const std::string &data ) {
+    std::string digest;
+    CryptoPP::SHA256 hash;
+    StringSource foo( data, true,
+        new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest))
+    );
+    return digest;
+}
+
+//------------------------------------------------------------------------------
+std::string base64( const std::string &data ) {
+    std::string ret;
+    StringSource ssrc( data, true /*pump all*/,
+                          new Base64Encoder( new StringSink(ret) ) );
+    return ret;
+}
+
 //------------------------------------------------------------------------------
 } // namespace Crypto

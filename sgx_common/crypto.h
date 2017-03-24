@@ -18,6 +18,8 @@ std::string decrypt_rsa( const PrvKey &prvkey, const std::string &cipher );
 std::string printable( const std::string &s );
 void decodeBase64PublicKey(const std::string& filename, PubKey& key);
 void decodeBase64PrivateKey(const std::string& filename, PrvKey& key);
+std::string sha256( const std::string& );
+std::string base64( const std::string& );
 
 }
 #endif
