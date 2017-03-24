@@ -4,7 +4,7 @@ function function_wrapper(func)
   local prefix = 'function(params) func = '
   local suffix = ' return func(table.unpack(cjson.decode(params))) end'
 
-  return prefix .. func .. suffix  
+  return prefix .. func .. suffix
 end
 
 
@@ -97,6 +97,9 @@ print( sgxdecrypt( sgxprocess( sgxencrypt('function() return \'toto\' end'), sgx
 
 print(function_wrapper(code3))
 
-print( sgxdecrypt( sgxprocess( sgxencrypt(function_wrapper(code3)), sgxencrypt( params_wrapper(1,5) ) ) ) )
+print( sgxdecrypt( sgxprocess( sgxencrypt(function_wrapper(code3)), sgxencrypt( params_wrapper(1,5) ), 'mih' ) ) )
 
 print(sgx(code3, 2, 5))
+
+print(sgxdecrypt(sgxprocess(sgxencrypt('function(x) return x end'), sgxencrypt(3), sgxencrypt(5))))
+print(sgxdecrypt(sgxprocess(sgxencrypt('function(x,y) return x*y end'), sgxencrypt(3), sgxencrypt(5))))

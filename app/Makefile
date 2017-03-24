@@ -19,7 +19,8 @@ SGX_ENCLAVE_SIGNER := $(SGX_SDK)/bin/x64/sgx_sign
 SGX_EDGER8R := $(SGX_SDK)/bin/x64/sgx_edger8r
 
 App_Trusted_IncPaths := $(addprefix -I, $(UNTRUSTED_DIR) $(SGX_SDK)/include \
-                          $(SGXCOMMONDIR))
+                          $(SGXCOMMONDIR) \
+                          include)
 App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Trusted_IncPaths)
 
 ifeq ($(SGX_DEBUG), 1)
@@ -42,8 +43,9 @@ endif
 
 App_Cpp_Flags := $(App_C_Flags) -std=c++11 -I$(UNTRLUADIR)/src
 Trusted_IncPaths := $(addprefix -I, $(LUADIR)/src $(SGX_SDK)/include/tlibc \
-                                 $(SGX_SDK)/include $(TRUSTED_DIR)\
-                                 /usr/include/x86_64-linux-gnu/)
+                                 $(SGX_SDK)/include $(TRUSTED_DIR) \
+                                 /usr/include/x86_64-linux-gnu/ \
+                                 include)
 
 Flags_Just_For_C := -Wno-implicit-function-declaration -std=c11
 Common_C_Cpp_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Trusted_IncPaths) -fno-builtin-printf -I.

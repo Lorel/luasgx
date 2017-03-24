@@ -1,7 +1,9 @@
 /* EnclavedLua_Filter.edl - Top EDL file. */
 
 enclave {
-    /* 
+    include "luasgx_types.h"
+
+    /*
      *  [in]: copy the string buffer to App outside.
      *  [string]: specifies 'str' is a NULL terminated buffer.
      */
@@ -13,9 +15,8 @@ enclave {
     trusted {
             public void ecall_luainit();
             public void ecall_luaclose();
-    	    public size_t ecall_execfunc([in, size=csz] const char *code, size_t csz, [in, size=dsz]const char *data, size_t dsz, [out,size=len] char *buff, size_t len);
+            public size_t ecall_execfunc([in] LuaSGX_Arg *code_arg, [out,size=len] char *buff, size_t len);
             public void ecall_add_execution([in, string] const char *fname, [in, size=len] const char *e, size_t len);
             public void ecall_execute([in, string] const char *fname, [in, size=len] const char *e, size_t len);
     };
 };
-
