@@ -56,7 +56,7 @@ void ecall_luaclose() {
 #include <ldo.h>
 struct Buff{ const char *buff; size_t len;};
 //------------------------------------------------------------------------------
-void test(lua_State *L, void *arg) {
+void get_Lua_string(lua_State *L, void *arg) {
     Buff *b = (Buff*)arg;
     b->buff = luaL_checklstring( L, 1, &b->len );
 }
@@ -100,7 +100,7 @@ size_t ecall_execfunc(LuaSGX_Arg *args, char *buff, size_t len) {
 
     // assign pcode (function) to global x
     std::string c = std::string("x=") + pdata;
-    ecall_execute("abc", c.c_str(), c.size());
+    ecall_execute("enclaved_lua_code", c.c_str(), c.size());
 
     lua_getglobal(L, "x");
 
@@ -113,22 +113,32 @@ size_t ecall_execfunc(LuaSGX_Arg *args, char *buff, size_t len) {
         nargs += 1;
     }
 
-    // process Lua code
-    lua_pcall(L, nargs, 1, 0);
+    // process Lua code, return only one result
+    // (use lua_pcall(L, nargs, LUA_MULTRET,0) otherwise)
+    int call_status = lua_pcall(L, nargs, 1, 0);
+
+    // retrieve result (string)
     Buff b;
-    int status = luaD_rawrunprotected(L, test, &b);
+    int get_status = luaD_rawrunprotected(L, get_Lua_string, &b);
 
     // handle error msg
     std::string msg("Error: ");
-    if (status) {
+
+    if (call_status || get_status) {
         if (lua_type(L, -1) == LUA_TSTRING)
             msg += lua_tostring(L, -1);
+        else
+            msg += "not a string (but should be one)";
 
+        if (get_status)
+            msg += " (error when retrieving return value, must be a string)";
+
+        // replace buffer content with error message
         b.buff = msg.c_str();
         b.len = msg.size();
     }
 
-    // sotre encrypted response
+    // store encrypted response
     encrypt(b.buff, buff, result_size = std::min(b.len, len));
 
     lua_settop(L, 0);

@@ -610,8 +610,8 @@ int sgx_init() {
 
 //------------------------------------------------------------------------------
 static int l_sgx_process(lua_State *L) {
-    printf("Call l_sgx_process\n");
-    printf("lua_gettop(): %d\n", lua_gettop(L));
+    // printf("Call l_sgx_process\n");
+    // printf("lua_gettop(): %d\n", lua_gettop(L));
 
     // check number of parameters
     if (lua_gettop(L) == 0) {

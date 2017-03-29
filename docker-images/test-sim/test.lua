@@ -103,3 +103,7 @@ print(sgx(code3, 2, 5))
 
 print(sgxdecrypt(sgxprocess(sgxencrypt('function(x) return x end'), sgxencrypt(3), sgxencrypt(5))))
 print(sgxdecrypt(sgxprocess(sgxencrypt('function(x,y) return x*y end'), sgxencrypt(3), sgxencrypt(5))))
+print(sgxdecrypt(sgxprocess(sgxencrypt('function(x,y) return x*y end'), sgxencrypt(5))))
+print(sgxdecrypt(sgxprocess(sgxencrypt('function() return "I am a simple string" end'))))
+print(sgxdecrypt(sgxprocess(sgxencrypt('function() return {"I am a simple table"} end'))))
+print(sgxdecrypt(sgxprocess(sgxencrypt('function(x,y) return x, y end'), sgxencrypt(3), sgxencrypt(5))))
