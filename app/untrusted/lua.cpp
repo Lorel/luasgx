@@ -646,6 +646,14 @@ static int l_sgx_process(lua_State *L) {
 
     ecall_execfunc(global_eid, &result, args, buff, sizeof(buff));
     lua_pushlstring(L, buff, result);
+
+    // free memory
+    do {
+      arg = args->next;
+      delete args;
+      args = arg;
+    } while (args != NULL);
+
     return 1;
 }
 
