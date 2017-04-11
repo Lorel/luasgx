@@ -8,8 +8,8 @@
 #include <algorithm>
 #include <string>
 
-/* 
- * printf: 
+/*
+ * printf:
  *   Invokes OCALL to display the enclave buffer to the terminal.
  */
 //------------------------------------------------------------------------------
@@ -26,7 +26,7 @@ void printf(const char *fmt, ...) {
 
 //====================== ECALLS ================================================
 lua_State *L = 0;
-extern "C" { 
+extern "C" {
     extern int luaopen_cjson(lua_State *l);
     extern int luaopen_csv(lua_State *l);
 }
@@ -37,7 +37,7 @@ void ecall_luainit() {
         return;
     }
     luaL_requiref(L, "cjson", luaopen_cjson, 1);
-    luaL_requiref(L, "ccsv",  luaopen_csv, 1); 
+    luaL_requiref(L, "ccsv",  luaopen_csv, 1);
     luaL_openlibs(L);
 
     lua_createtable(L, 0, 2);
@@ -56,7 +56,7 @@ void ecall_luaclose() {
 #include <ldo.h>
 struct Buff{ const char *buff; size_t len;};
 //------------------------------------------------------------------------------
-void test(lua_State *L, void *arg) {
+void get_Lua_string(lua_State *L, void *arg) {
     Buff *b = (Buff*)arg;
     b->buff = luaL_checklstring( L, 1, &b->len );
 }
@@ -89,31 +89,59 @@ static void stackDump (lua_State *L) {
 }
 
 //------------------------------------------------------------------------------
-size_t ecall_execfunc( const char *ccode, size_t csz, const char *cdata, size_t dsz, char *buff, size_t len ) {
-    char pcode[BUFSIZ], pdata[BUFSIZ];
-    size_t cs, ds, result_size;
-    decrypt( ccode, pcode, cs = std::min(sizeof(pcode)-1,csz) );
-    decrypt( cdata, pdata, ds = std::min(sizeof(pdata)-1,dsz) );
-    pcode[cs] = 0; pdata[ds] = 0;
-    
-    std::string c = std::string("x=") + pcode;
-    ecall_execute("abc",c.c_str(),c.size());
+size_t ecall_execfunc(LuaSGX_Arg *args, char *buff, size_t len) {
+    char pdata[BUFSIZ];
+    size_t ds, result_size;
+    int nargs = 0;
 
-    lua_getglobal(L,"x");
-    lua_pushstring( L, pdata );
-    lua_pcall(L,1,1,0);
+    // extract function code
+    decrypt(args->buffer, pdata, ds = std::min(sizeof(pdata)-1, args->size));
+    pdata[ds] = 0;
 
+    // assign pcode (function) to global x
+    std::string c = std::string("x=") + pdata;
+    ecall_execute("enclaved_lua_code", c.c_str(), c.size());
+
+    lua_getglobal(L, "x");
+
+    // extract args
+    while (args->next != NULL) {
+        args = args->next;
+        decrypt(args->buffer, pdata, ds = std::min(sizeof(pdata)-1, args->size));
+        pdata[ds] = 0;
+        lua_pushstring(L, pdata);
+        nargs += 1;
+    }
+
+    // process Lua code, return only one result
+    // (use lua_pcall(L, nargs, LUA_MULTRET,0) otherwise)
+    int call_status = lua_pcall(L, nargs, 1, 0);
+
+    // retrieve result (string)
     Buff b;
-    int status = luaD_rawrunprotected( L, test, &b );
+    int get_status = luaD_rawrunprotected(L, get_Lua_string, &b);
+
+    // handle error msg
     std::string msg("Error: ");
-    if( status ) {
-        if( lua_type(L,-1) == LUA_TSTRING ) msg += lua_tostring(L,-1);
+
+    if (call_status || get_status) {
+        if (lua_type(L, -1) == LUA_TSTRING)
+            msg += lua_tostring(L, -1);
+        else
+            msg += "not a string (but should be one)";
+
+        if (get_status)
+            msg += " (error when retrieving return value, must be a string)";
+
+        // replace buffer content with error message
         b.buff = msg.c_str();
         b.len = msg.size();
     }
 
-    encrypt( b.buff, buff, result_size = std::min(b.len,len) );
-    lua_settop(L,0);
+    // store encrypted response
+    encrypt(b.buff, buff, result_size = std::min(b.len, len));
+
+    lua_settop(L, 0);
     return result_size;
 }
 
@@ -127,4 +155,3 @@ void ecall_execute( const char *fname, const char *e, size_t len ) {
     file_mock( e, len, fname );
     int st = handle_script(L,fname);
 }
-

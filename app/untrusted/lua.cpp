@@ -458,7 +458,7 @@ static int handle_script (lua_State *L, char **argv) {
 /*
 ** Traverses all arguments from 'argv', returning a mask with those
 ** needed before running any Lua code (or an error code if it finds
-** any invalid argument). 'first' returns the first not-handled argument 
+** any invalid argument). 'first' returns the first not-handled argument
 ** (either the script name or a bad argument in case of error).
 */
 static int collectargs (char **argv, int *first) {
@@ -482,7 +482,7 @@ static int collectargs (char **argv, int *first) {
         args |= has_E;
         break;
       case 'i':
-        args |= has_i;  /* (-i implies -v) *//* FALLTHROUGH */ 
+        args |= has_i;  /* (-i implies -v) *//* FALLTHROUGH */
       case 'v':
         if (argv[i][2] != '\0')  /* extra characters after 1st? */
           return has_error;  /* invalid option */
@@ -596,6 +596,7 @@ static int pmain (lua_State *L) {
 #include <EnclavedLua_u.h>
 #include <crypto.h>
 #include <iostream>
+
 int sgx_init() {
     /* Initialize the enclave */
     if(initialize_enclave( global_eid, "EnclavedLua.signed.so",
@@ -608,13 +609,51 @@ int sgx_init() {
 }
 
 //------------------------------------------------------------------------------
-static int l_sgx_process( lua_State *L ) {
-    size_t dsz, csz, result;
-    const char *code = luaL_checklstring( L, 1, &csz ),
-               *data = luaL_checklstring( L, 2, &dsz );
+static int l_sgx_process(lua_State *L) {
+    // printf("Call l_sgx_process\n");
+    // printf("lua_gettop(): %d\n", lua_gettop(L));
+
+    // check number of parameters
+    if (lua_gettop(L) == 0) {
+      lua_pushstring(L, "The function sgx_process requires at least one parameter");
+      return lua_error(L);
+    }
+
+    const char *data;
     char buff[BUFSIZ];
-    ecall_execfunc( global_eid, &result, code, csz, data, dsz, buff, sizeof(buff) );
-    lua_pushlstring(L,buff,result);
+    size_t sz, result;
+
+    // extract code from first parameter
+    data = luaL_checklstring(L, 1, &sz);
+
+    LuaSGX_Arg *args = new LuaSGX_Arg;
+    args->buffer = data;
+    args->size = sz;
+    args->next = NULL;
+
+    // use var arg to link parameters to args
+    LuaSGX_Arg *arg = args;
+
+    // extract function parameters
+    for (int i = 1; i < lua_gettop(L); i++) {
+        arg->next = new LuaSGX_Arg;
+        arg = arg->next;
+        data = luaL_checklstring(L, i + 1, &sz);
+        arg->buffer = data;
+        arg->size = sz;
+        arg->next = NULL;
+    }
+
+    ecall_execfunc(global_eid, &result, args, buff, sizeof(buff));
+    lua_pushlstring(L, buff, result);
+
+    // free memory
+    do {
+      arg = args->next;
+      delete args;
+      args = arg;
+    } while (args != NULL);
+
     return 1;
 }
 
@@ -633,7 +672,7 @@ static int l_sgx_decrypt( lua_State *L ) {
     size_t sz;
     const char *cipher = luaL_checklstring( L, 1, &sz );
     std::string plain( cipher, sz );
-    Crypto::decrypt_aes_inline( plain ); 
+    Crypto::decrypt_aes_inline( plain );
     lua_pushlstring(L,plain.c_str(),plain.size());
     return 1;
 }
@@ -668,4 +707,3 @@ int main (int argc, char **argv) {
     ecall_luaclose( global_eid );
     return (result && status == LUA_OK) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
