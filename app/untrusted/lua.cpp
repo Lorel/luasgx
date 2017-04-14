@@ -658,23 +658,33 @@ static int l_sgx_process(lua_State *L) {
 }
 
 //------------------------------------------------------------------------------
-static int l_sgx_encrypt( lua_State *L ) {
-    size_t sz;
-    const char *plain = luaL_checklstring( L, 1, &sz );
-    std::string cipher(plain,sz);
-    Crypto::encrypt_aes_inline( cipher );
-    lua_pushlstring(L,cipher.c_str(),cipher.size());
-    return 1;
+static int l_sgx_crypt(lua_State *L) {
+    const char *in;
+    std::string out;
+    int lua_State_top = lua_gettop(L);
+    int i;
+    size_t len;
+
+    for (i = 0; i < lua_State_top; i++) {
+        in = luaL_checklstring(L, 1, &len);
+        lua_remove(L, 1); /* remove element from stack */
+        out.assign(in, len);
+        Crypto::encrypt_aes_inline(out);
+        lua_pushlstring(L, out.c_str(), out.size());
+        out.erase(0, out.length()); /* empty buffer */
+    }
+
+    return i;
 }
 
 //------------------------------------------------------------------------------
-static int l_sgx_decrypt( lua_State *L ) {
-    size_t sz;
-    const char *cipher = luaL_checklstring( L, 1, &sz );
-    std::string plain( cipher, sz );
-    Crypto::decrypt_aes_inline( plain );
-    lua_pushlstring(L,plain.c_str(),plain.size());
-    return 1;
+static int l_sgx_encrypt(lua_State *L) {
+    return l_sgx_crypt(L);
+}
+
+//------------------------------------------------------------------------------
+static int l_sgx_decrypt(lua_State *L) {
+    return l_sgx_crypt(L);
 }
 
 //------------------------------------------------------------------------------
