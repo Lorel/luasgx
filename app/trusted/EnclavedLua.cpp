@@ -56,9 +56,11 @@ void ecall_luaclose() {
 #include <ldo.h>
 struct Buff{ const char *buff; size_t len;};
 //------------------------------------------------------------------------------
-void get_Lua_string(lua_State *L, void *arg) {
-    Buff *b = (Buff*)arg;
-    b->buff = luaL_checklstring( L, 1, &b->len );
+void check_string(lua_State *L, void *arg) {
+    int n = lua_gettop(L);
+
+    for (int i = 1; i < n+1; i++)
+        luaL_checklstring(L, 1, NULL);
 }
 
 //------------------------------------------------------------------------------
@@ -89,22 +91,24 @@ static void stackDump (lua_State *L) {
 }
 
 //------------------------------------------------------------------------------
-size_t ecall_execfunc(LuaSGX_Arg *args, char *buff, size_t len) {
+int ecall_execfunc(LuaSGX_Arg *args, LuaSGX_Arg **ret, size_t len) {
     char pdata[BUFSIZ];
-    size_t ds, result_size;
+    const char *buff;
+    char ebuff[BUFSIZ];
+    size_t ds, result_size, sz;
     int nargs = 0;
 
-    // extract function code
+    /* extract function code */
     decrypt(args->buffer, pdata, ds = std::min(sizeof(pdata)-1, args->size));
     pdata[ds] = 0;
 
-    // assign pcode (function) to global x
+    /* assign pcode (function) to global x */
     std::string c = std::string("x=") + pdata;
     ecall_execute("enclaved_lua_code", c.c_str(), c.size());
 
     lua_getglobal(L, "x");
 
-    // extract args
+    /* extract args */
     while (args->next != NULL) {
         args = args->next;
         decrypt(args->buffer, pdata, ds = std::min(sizeof(pdata)-1, args->size));
@@ -113,36 +117,79 @@ size_t ecall_execfunc(LuaSGX_Arg *args, char *buff, size_t len) {
         nargs += 1;
     }
 
-    // process Lua code, return only one result
-    // (use lua_pcall(L, nargs, LUA_MULTRET,0) otherwise)
-    int call_status = lua_pcall(L, nargs, 1, 0);
+    /* process Lua code, push all results on Lua state */
+    int call_status = lua_pcall(L, nargs, LUA_MULTRET, 0);
 
-    // retrieve result (string)
-    Buff b;
-    int get_status = luaD_rawrunprotected(L, get_Lua_string, &b);
+    /* check result values (strings only) */
+    /* TODO do it by other means */
+    int check_status = luaD_rawrunprotected(L, check_string, NULL);
 
-    // handle error msg
-    std::string msg("Error: ");
+    if (call_status || check_status) {
+        /* handle error msg */
+        std::string msg("Error: ");
 
-    if (call_status || get_status) {
         if (lua_type(L, -1) == LUA_TSTRING)
             msg += lua_tostring(L, -1);
         else
-            msg += "not a string (but should be one)";
+            msg += "error msg is not a string (but should be one)";
 
-        if (get_status)
+        if (check_status)
             msg += " (error when retrieving return value, must be a string)";
 
-        // replace buffer content with error message
-        b.buff = msg.c_str();
-        b.len = msg.size();
+        /* encrypt error message */
+        encrypt(msg.c_str(), ebuff, result_size = std::min(msg.size(), len));
+
+        /* store error message */
+        *ret = new LuaSGX_Arg;
+        (*ret)->buffer = (char*) memcpy((char*) malloc(result_size), ebuff, result_size);
+        (*ret)->size = result_size;
+        (*ret)->next = NULL;
+
+        lua_settop(L, 0);
+        return LUA_ERRRUN;
     }
 
-    // store encrypted response
-    encrypt(b.buff, buff, result_size = std::min(b.len, len));
+    /* get number of elements to return */
+    int n = lua_gettop(L);
+
+    if (n == 0) {
+        /* no element to return */
+        *ret = NULL;
+
+        lua_settop(L, 0);
+        return LUA_OK;
+    }
+
+    /* store elements otherwise */
+    *ret = new LuaSGX_Arg;
+    LuaSGX_Arg *value = *ret;
+
+    /* store return values */
+    for (int i = 1; i < n + 1; i++) {
+        // printf("return value %s\n", luaL_checklstring(L, i, NULL));
+
+        /* encrypt return value */
+        buff = luaL_checklstring(L, i, &sz);
+        encrypt(buff, ebuff, result_size = std::min(sz+1, len));
+        // printf("encrypted value %s, size %d, %d, %d\n", buff, sz, len, result_size);
+
+        /* store return value */
+        value->buffer = (char*) memcpy((char*) malloc(result_size), ebuff, result_size);
+        value->size = result_size;
+        // printf("value->buffer %s, value->size %d\n", value->buffer , value->size);
+
+        if (i == n) {
+            /* last element, end the list */
+            value->next = NULL;
+        } else {
+            /* chain next element */
+            value->next = new LuaSGX_Arg;
+            value = value->next;
+        }
+    }
 
     lua_settop(L, 0);
-    return result_size;
+    return LUA_OK;
 }
 
 //------------------------------------------------------------------------------
