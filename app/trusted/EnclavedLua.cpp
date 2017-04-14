@@ -95,7 +95,7 @@ int ecall_execfunc(LuaSGX_Arg *args, LuaSGX_Arg **ret, size_t len) {
     char pdata[BUFSIZ];
     const char *buff;
     char ebuff[BUFSIZ];
-    size_t ds, result_size, sz;
+    size_t ds, result_size;
     int nargs = 0;
 
     /* extract function code */
@@ -169,9 +169,9 @@ int ecall_execfunc(LuaSGX_Arg *args, LuaSGX_Arg **ret, size_t len) {
         // printf("return value %s\n", luaL_checklstring(L, i, NULL));
 
         /* encrypt return value */
-        buff = luaL_checklstring(L, i, &sz);
-        encrypt(buff, ebuff, result_size = std::min(sz+1, len));
-        // printf("encrypted value %s, size %d, %d, %d\n", buff, sz, len, result_size);
+        buff = luaL_checklstring(L, i, &result_size);
+        encrypt(buff, ebuff, result_size = std::min(result_size, len));
+        // printf("encrypted value %s, size %d, %d\n", buff, len, result_size);
 
         /* store return value */
         value->buffer = (char*) memcpy((char*) malloc(result_size), ebuff, result_size);
