@@ -610,20 +610,19 @@ int sgx_init() {
 
 //------------------------------------------------------------------------------
 static int l_sgx_process(lua_State *L) {
-    // printf("Call l_sgx_process\n");
-    // printf("lua_gettop(): %d\n", lua_gettop(L));
 
-    // check number of parameters
+    /* check number of parameters */
     if (lua_gettop(L) == 0) {
-      lua_pushstring(L, "The function sgx_process requires at least one parameter");
-      return lua_error(L);
+        lua_pushstring(L, "The function sgx_process requires at least one parameter");
+        return lua_error(L);
     }
 
     const char *data;
     char buff[BUFSIZ];
-    size_t sz, result;
+    size_t sz;
+    int status;
 
-    // extract code from first parameter
+    /* extract code from first parameter */
     data = luaL_checklstring(L, 1, &sz);
 
     LuaSGX_Arg *args = new LuaSGX_Arg;
@@ -631,10 +630,10 @@ static int l_sgx_process(lua_State *L) {
     args->size = sz;
     args->next = NULL;
 
-    // use var arg to link parameters to args
+    /* use variable arg to link parameters to args */
     LuaSGX_Arg *arg = args;
 
-    // extract function parameters
+    /* extract function parameters */
     for (int i = 1; i < lua_gettop(L); i++) {
         arg->next = new LuaSGX_Arg;
         arg = arg->next;
@@ -644,17 +643,36 @@ static int l_sgx_process(lua_State *L) {
         arg->next = NULL;
     }
 
-    ecall_execfunc(global_eid, &result, args, buff, sizeof(buff));
-    lua_pushlstring(L, buff, result);
+    /* init pointer for return values */
+    LuaSGX_Arg** rets = (LuaSGX_Arg**) malloc(sizeof(LuaSGX_Arg*));
 
-    // free memory
+    /* exec function in an enclave */
+    ecall_execfunc(global_eid, &status, args, rets, BUFSIZ);
+
+    /* check call status */
+    if (status)
+        printf("-- sgx_process encountered an error --\n");
+
+    /* free memory for args */
     do {
-      arg = args->next;
-      delete args;
-      args = arg;
+        arg = args->next;
+        delete args;
+        args = arg;
     } while (args != NULL);
 
-    return 1;
+    /* push return values on the Lua stack */
+    LuaSGX_Arg* ret = *rets;
+    free(rets);
+    int j = 0;
+
+    while (ret != NULL) {
+        // printf("lua_pushlstring %s, size %d\n", ret->buffer, ret->size);
+        lua_pushlstring(L, ret->buffer, ret->size);
+        ret = ret->next;
+        j++;
+    }
+
+    return j;
 }
 
 //------------------------------------------------------------------------------

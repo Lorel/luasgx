@@ -102,10 +102,13 @@ print( sgxdecrypt( sgxprocess( sgxencrypt(function_wrapper(code3)), sgxencrypt( 
 print(sgx(code3, 2, 5))
 
 print(sgxdecrypt(sgxprocess(sgxencrypt('function(x) return x end'), sgxencrypt(3), sgxencrypt(5))))
-print(sgxdecrypt(sgxprocess(sgxencrypt('function(x,y) return x*y end'), sgxencrypt(3), sgxencrypt(5))))
+print(sgxdecrypt(sgxprocess(sgxencrypt('function(x,y) return x*y end'), sgxencrypt(3), sgxencrypt(15))))
 print(sgxdecrypt(sgxprocess(sgxencrypt('function(x,y) return x*y end'), sgxencrypt(5))))
 print(sgxdecrypt(sgxprocess(sgxencrypt('function() return "I am a simple string" end'))))
+print(sgxdecrypt(sgxprocess(sgxencrypt('function() return "I am a very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very long long string" end'))))
 print(sgxdecrypt(sgxprocess(sgxencrypt('function() return {"I am a simple table"} end'))))
 print(sgxdecrypt(sgxprocess(sgxencrypt('function(x,y) return x, y end'), sgxencrypt(3), sgxencrypt(5))))
 
 print(sgxdecrypt(sgxencrypt("un", "deux", "trois")))
+print(#sgxprocess(sgxencrypt('function() return {"I am a simple table"} end')))
+print(sgxdecrypt(sgxprocess(sgxencrypt('function() end'))))
